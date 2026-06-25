@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能镜头分割工具</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1600px; margin: 0 auto; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.95); border-radius: 16px; padding: 20px 30px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .header h1 { font-size: 24px; color: #333; font-weight: 600; }
+        .header .subtitle { font-size: 14px; color: #666; margin-top: 5px; }
+        .header-right { display: flex; gap: 15px; }
+        .badge { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 500; }
+        
+        .main-content { display: grid; grid-template-columns: 280px 380px 1fr 320px; gap: 20px; }
+        
+        .panel { background: rgba(255,255,255,0.95); border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .panel-title { font-size: 16px; font-weight: 600; color: #333; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #f0f0f0; display: flex; align-items: center; gap: 8px; }
+        .panel-title .icon { width: 20px; height: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; }
+        
+        .video-select-box { border: 2px dashed #ddd; border-radius: 12px; padding: 40px 20px; text-align: center; margin-bottom: 15px; cursor: pointer; transition: all 0.3s ease; }
+        .video-select-box:hover { border-color: #667eea; background: #f8f9ff; }
+        .video-select-box .placeholder { color: #999; font-size: 14px; }
+        
+        .btn { width: 100%; padding: 12px 20px; border: none; border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.3s ease; margin-bottom: 10px; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .btn-secondary { background: #f0f0f0; color: #666; }
+        .btn-warning { background: #fff3cd; color: #856404; }
+        
+        .video-list { max-height: 300px; overflow-y: auto; }
+        .video-item { background: #fafafa; border-radius: 10px; padding: 12px; margin-bottom: 10px; cursor: pointer; border: 2px solid transparent; }
+        .video-item:hover { background: #f0f0f0; }
+        .video-item.active { border-color: #667eea; background: #f8f9ff; }
+        .video-item .video-name { font-size: 13px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .video-item .video-scenes { font-size: 12px; color: #999; margin-top: 4px; }
+        
+        .scene-list-container { max-height: calc(100vh - 380px); overflow-y: auto; }
+        .scene-item { background: white; border-radius: 10px; padding: 12px; margin-bottom: 10px; cursor: pointer; border: 2px solid transparent; position: relative; display: flex; align-items: center; }
+        .scene-item:hover { background: #f8f9ff; }
+        .scene-item.selected { border-color: #667eea; background: #f8f9ff; }
+        .scene-item .scene-info { display: flex; align-items: center; gap: 10px; flex: 1; }
+        .scene-item .checkbox { width: 18px; height: 18px; border: 2px solid #ddd; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .scene-item.selected .checkbox { background: #667eea; border-color: #667eea; }
+        .scene-item.selected .checkbox::after { content: '✓'; color: white; font-size: 12px; }
+        .scene-item .scene-name { font-size: 13px; color: #333; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .scene-item .scene-duration { font-size: 12px; color: #999; flex-shrink: 0; }
+        .scene-item .category-tag { font-size: 11px; padding: 3px 10px; border-radius: 10px; background: #e8e8e8; color: #666; cursor: pointer; border: 1px solid #ddd; transition: all 0.2s; flex-shrink: 0; margin-left: 10px; max-width: 80px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .scene-item .category-tag:hover { background: #667eea; color: white; border-color: #667eea; }
+        .scene-item .category-tag.product { background: #ffe4e6; color: #c53030; }
+        .scene-item .category-tag.person { background: #ebf8ff; color: #2b6cb0; }
+        .scene-item .category-tag.scene { background: #f0fff4; color: #38a169; }
+        .scene-item .category-tag.demo { background: #fffaf0; color: #d69e2e; }
+        .scene-item .category-tag.review { background: #faf5ff; color: #805ad5; }
+        .scene-item .category-tag.tutorial { background: #fff0f6; color: #d6336c; }
+        .scene-item .category-tag.daily { background: #ebf8ff; color: #2c7a7b; }
+        .scene-item .category-tag.food { background: #fffaf0; color: #dd6b20; }
+        .scene-item .category-tag.sport { background: #f0fff4; color: #48bb78; }
+        .scene-item .category-tag.travel { background: #e6fffa; color: #319795; }
+        .scene-item .category-tag.other { background: #e2e8f0; color: #64748b; }
+        
+        .preview-area { background: #1a1a1a; border-radius: 12px; flex: 1; display: flex; align-items: center; justify-content: center; min-height: 400px; }
+        .preview-area .placeholder { color: #666; text-align: center; }
+        .preview-area video { max-width: 100%; max-height: 100%; object-fit: contain; }
+        
+        .selected-scenes { flex: 1; overflow-y: auto; }
+        .selected-scenes .empty { text-align: center; color: #999; padding: 40px 20px; }
+        
+        .action-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px; }
+        .action-btn { padding: 8px 14px; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; }
+        .action-btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .action-btn-secondary { background: #f0f0f0; color: #666; }
+        .action-btn-success { background: #d4edda; color: #155724; }
+        .action-btn-info { background: #d1ecf1; color: #0c5460; }
+        .action-btn-warning { background: #fff3cd; color: #856404; }
+        
+        .log-section { background: rgba(255,255,255,0.95); border-radius: 16px; padding: 20px; margin-top: 20px; }
+        .log-content { background: #1a1a1a; color: #00ff88; font-family: 'Consolas', monospace; font-size: 13px; padding: 15px; border-radius: 10px; height: 120px; overflow-y: auto; white-space: pre-wrap; }
+        
+        #file-input { display: none; }
+        
+        .category-selector { margin-bottom: 15px; }
+        .category-selector label { display: block; font-size: 13px; color: #666; margin-bottom: 8px; }
+        .category-selector select { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; background: white; cursor: pointer; }
+        .category-selector select:focus { outline: none; border-color: #667eea; }
+        
+        .category-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 15px; }
+        .category-chip { padding: 5px 12px; border-radius: 15px; font-size: 12px; cursor: pointer; background: #f0f0f0; color: #666; border: none; }
+        .category-chip:hover { background: #e0e0e0; }
+        .category-chip.active { background: #667eea; color: white; }
+        
+        .category-summary { background: #f8f9ff; border-radius: 10px; padding: 12px; margin-bottom: 15px; }
+        .category-summary h4 { font-size: 13px; color: #667eea; margin-bottom: 10px; }
+        .category-summary .summary-item { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid #e0e0e0; }
+        .category-summary .summary-item:last-child { border-bottom: none; }
+        .category-summary .summary-item .name { color: #333; }
+        .category-summary .summary-item .count { color: #667eea; font-weight: 500; }
+        
+        .category-popup { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 16px; padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 1000; min-width: 320px; }
+        .category-popup h3 { margin-bottom: 15px; font-size: 16px; color: #333; }
+        .category-popup input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px; font-size: 14px; }
+        .category-popup .category-list { max-height: 250px; overflow-y: auto; margin-bottom: 15px; }
+        .category-popup .category-option { padding: 10px; border-radius: 8px; cursor: pointer; transition: background 0.2s; }
+        .category-popup .category-option:hover { background: #f0f0f0; }
+        .category-popup .category-option.selected { background: #667eea; color: white; }
+        .category-popup .btn-group { display: flex; gap: 10px; }
+        .category-popup .btn-group button { flex: 1; padding: 10px; border: none; border-radius: 8px; cursor: pointer; }
+        .category-popup .btn-group button:first-child { background: #667eea; color: white; }
+        .category-popup .btn-group button:last-child { background: #f0f0f0; color: #666; }
+        .overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; }
+        
+        .category-select-wrapper { position: relative; flex-shrink: 0; margin-left: 10px; }
+        .category-select-wrapper .category-select { 
+            position: absolute; 
+            top: -5px; 
+            left: 0; 
+            min-width: 120px; 
+            max-width: 150px;
+            padding: 5px 10px; 
+            border: 1px solid #667eea; 
+            border-radius: 8px; 
+            font-size: 12px; 
+            background: white; 
+            cursor: pointer;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+        }
+        .category-select-wrapper.active .category-select { display: block; }
+        .category-select-wrapper.active .category-display { display: none; }
+        .category-select-wrapper .category-display { display: inline-block; }
+        .category-select:focus { outline: none; border-color: #667eea; }
+        
+        .product-selector { display: flex; align-items: center; gap: 10px; padding: 15px 20px; background: #f8f9ff; border-radius: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+        .product-selector label { font-size: 14px; color: #666; }
+        .product-selector select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; width: 150px; background: white; cursor: pointer; }
+        .product-selector input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; width: 150px; }
+        .product-selector button { padding: 8px 16px; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; background: #667eea; color: white; }
+        .product-selector button:last-of-type { background: #f0f0f0; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>智能镜头分割工具</h1>
+                <div class="subtitle">上传视频后生成审核片段，支持分类管理和批量导出</div>
+            </div>
+            <div class="header-right">
+                <span class="badge">本地处理 · AI分类</span>
+            </div>
+        </div>
+        
+        <div class="product-selector">
+            <label>产品名称:</label>
+            <select id="product-select" onchange="selectFromProductHistory(this.value)">
+                <option value="">选择历史产品...</option>
+            </select>
+            <input type="text" id="product-input" placeholder="输入新产品名称">
+            <button onclick="setProduct()">确定</button>
+            <button onclick="clearProduct()">清除</button>
+            <span id="current-product" style="color:#667eea;font-weight:500;"></span>
+        </div>
+        
+        <div class="main-content">
+            <!-- 左侧：素材选择 + 视频列表 -->
+            <div class="panel">
+                <div class="panel-title"><span class="icon">📁</span>素材选择</div>
+                <div class="video-select-box" id="video-drop-area"><div class="placeholder">📹 点击或拖拽上传</div></div>
+                <button class="btn btn-secondary" onclick="document.getElementById('file-input').click()">📁 选择视频，可多选</button>
+                <input type="file" id="file-input" multiple accept="video/*">
+                <button class="btn btn-warning" onclick="selectVideoFolder()">📂 选择视频文件夹</button>
+                <button class="btn btn-secondary" onclick="clearSelection()">🗑 清空选择</button>
+                <button class="btn btn-primary" onclick="startProcessing()" id="start-btn">▶ 开始生成审核片段</button>
+                
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:15px;font-size:13px;color:#666;">
+                    <input type="checkbox" id="skip-ai"> 跳过AI自动分类（快速模式）
+                </label>
+                
+                <div style="margin-bottom:15px;">
+                    <div style="color:#999;font-size:13px;margin-bottom:8px;">⚙️ 拆分灵敏度（阈值）</div>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <input type="range" id="split-threshold" min="10" max="50" value="27" step="1" style="flex:1;">
+                        <span id="threshold-value" style="width:40px;text-align:right;font-size:13px;">27</span>
+                    </div>
+                    <div style="margin-top:10px;">
+                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#666;">
+                            <input type="checkbox" id="fast-mode" checked style="width:16px;height:16px;">
+                            <span>⚡ 极速模式（直接复制流，不重新编码）</span>
+                        </label>
+                    </div>
+                    <div style="margin-top:10px;">
+                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#666;">
+                            <input type="checkbox" id="frame-precision" style="width:16px;height:16px;">
+                            <span>🔍 帧精确模式（精准切割，速度较慢）</span>
+                        </label>
+                    </div>
+                    <div style="font-size:12px;color:#666;margin-top:5px;">
+                        <span style="color:#667eea;">低阈值</span> → 拆分更细 | <span style="color:#f44336;">高阈值</span> → 拆分更少
+                    </div>
+                </div>
+                
+                <div class="panel-title" style="margin-top:20px;"><span class="icon">📄</span>已上传视频<span id="video-count" style="font-size:12px;color:#999;margin-left:auto">0</span></div>
+                <div class="video-list" id="video-list"><div style="text-align:center;color:#999;padding:20px;">暂无视频</div></div>
+            </div>
+
+            <!-- 中间左：片段列表 + 分类 -->
+            <div class="panel">
+                <div class="panel-title"><span class="icon">🎬</span>片段列表<span id="scene-count" style="font-size:12px;color:#999;margin-left:auto">0 个</span></div>
+                
+                <div class="action-buttons">
+                    <button class="action-btn action-btn-secondary" onclick="selectAllScenes(true)">全选</button>
+                    <button class="action-btn action-btn-secondary" onclick="selectAllScenes(false)">取消全选</button>
+                    <button class="action-btn action-btn-warning" onclick="reSplitSelected()">🔪 二次拆分</button>
+                </div>
+
+                <div class="category-selector" id="category-selector" style="display:none;">
+                    <label>批量分类选中片段:</label>
+                    <select id="category-dropdown" onchange="applyCategoryToSelected()">
+                        <option value="">选择分类...</option>
+                    </select>
+                </div>
+
+                <div class="scene-list-container" id="scene-list"><div style="text-align:center;color:#999;padding:40px 20px;">请先选择视频</div></div>
+            </div>
+
+            <!-- 中间右：预览区域 -->
+            <div class="panel">
+                <div class="panel-title"><span class="icon">👁</span>视频预览</div>
+                <div class="preview-area" id="preview-area"><div class="placeholder">选择片段后在这里预览</div></div>
+            </div>
+
+            <!-- 右侧：分类面板 + 选中片段 -->
+            <div class="panel">
+                <div class="panel-title"><span class="icon">📊</span>分类管理</div>
+                
+                <div style="margin-bottom:15px;padding:12px;border:2px dashed #ddd;border-radius:10px;text-align:center;cursor:pointer;" id="category-image-upload" onclick="document.getElementById('category-image-input').click()">
+                    <div style="color:#999;font-size:13px;">📷 上传分类文件夹截图</div>
+                    <div style="color:#666;font-size:12px;margin-top:5px;">AI识别分类目录结构</div>
+                    <input type="file" id="category-image-input" accept="image/*" style="display:none;" onchange="recognizeCategoriesFromImage()">
+                </div>
+                
+                <div style="margin-bottom:15px;">
+                    <div style="color:#999;font-size:13px;margin-bottom:8px;">📝 手动输入分类（逗号或换行分隔）</div>
+                    <textarea id="category-input" rows="4" placeholder="90度折叠, 96度双面翻转, 搬桌子, 拆装, 挡板放东西, 滑轮, 升降, 桌子稳定" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:13px;"></textarea>
+                    <button class="btn btn-sm btn-secondary" onclick="setCategoriesFromText()" style="width:100%;margin-top:8px;">应用分类</button>
+                </div>
+                
+                <div style="padding:12px;background:#f8f9ff;border-radius:8px;margin-bottom:15px;">
+                    <div style="color:#666;font-size:13px;margin-bottom:8px;">💾 保存为分类集合</div>
+                    <div style="display:flex;gap:8px;">
+                        <input type="text" id="category-set-name" placeholder="输入集合名称" style="flex:1;padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;">
+                        <button class="btn btn-sm btn-primary" onclick="autoGenerateSetName()" style="padding:6px 12px;">自动生成</button>
+                        <button class="btn btn-sm btn-success" onclick="saveCategorySet()" style="padding:6px 12px;">保存</button>
+                    </div>
+                    <div style="margin-top:8px;">
+                        <select id="category-set-select" onchange="loadCategorySet(this.value)" style="width:100%;padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;">
+                            <option value="">加载已有分类集合...</option>
+                        </select>
+                    </div>
+                    <div id="current-category-set" style="color:#667eea;font-weight:500;font-size:12px;margin-top:8px;text-align:center;"></div>
+                </div>
+                
+                <div class="category-chips" id="category-chips">
+                    <button class="category-chip active" onclick="filterByCategory('')">全部</button>
+                </div>
+
+                <div class="category-summary" id="category-summary">
+                    <h4>分类统计</h4>
+                    <div style="text-align:center;color:#999;padding:20px;">暂无数据</div>
+                </div>
+
+                <div class="panel-title" style="margin-top:20px;"><span class="icon">✅</span>已选择片段</div>
+                <div class="action-buttons">
+                    <button class="action-btn action-btn-success" onclick="exportSelected()">导出选中</button>
+                    <button class="action-btn action-btn-success" onclick="exportAll()">导出全部</button>
+                    <button class="action-btn action-btn-warning" onclick="exportByCategoryBtn()">按分类导出</button>
+                    <button class="action-btn action-btn-info" onclick="showTrainingSet()">📊 训练集</button>
+                </div>
+                <div class="selected-scenes" id="selected-scenes">
+                    <div id="selected-count">已选择: 0 个</div>
+                    <div class="empty">暂无选择</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="log-section">
+            <div style="display:flex;justify-content:space-between;margin-bottom:15px;"><h3>运行日志</h3><span style="font-size:13px;color:#667eea;">实时进度</span></div>
+            <div class="log-content" id="log-content">等待任务开始...</div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8001';
+        let currentTaskId = null;
+        let currentVideoIndex = -1;
+        let selectedScenes = new Set();
+        let categories = [];
+        let currentFilterCategory = '';
+        let videos = [];
+        let currentProduct = null;
+
+        const fileInput = document.getElementById('file-input');
+        const videoDropArea = document.getElementById('video-drop-area');
+        const videoListDiv = document.getElementById('video-list');
+        const sceneListDiv = document.getElementById('scene-list');
+        const previewArea = document.getElementById('preview-area');
+        const selectedScenesDiv = document.getElementById('selected-scenes');
+        const selectedCountDiv = document.getElementById('selected-count');
+        const videoCountSpan = document.getElementById('video-count');
+        const sceneCountSpan = document.getElementById('scene-count');
+        const logContent = document.getElementById('log-content');
+        const startBtn = document.getElementById('start-btn');
+        const categoryChips = document.getElementById('category-chips');
+        const categorySelector = document.getElementById('category-selector');
+        const categoryDropdown = document.getElementById('category-dropdown');
+        const categorySummary = document.getElementById('category-summary');
+
+        function addLog(msg, type='info') {
+            const ts = new Date().toLocaleTimeString();
+            const cls = type === 'success' ? 'color:#00ff88' : type === 'error' ? 'color:#ff4444' : type === 'warning' ? 'color:#ffaa00' : 'color:#88ccff';
+            logContent.innerHTML += `[${ts}] <span style="${cls}">${msg}</span>\n`;
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+
+        async function loadCategories() {
+            try {
+                const response = await fetch(`${API_BASE}/api/categories`);
+                const result = await response.json();
+                categories = [...new Set(result.categories)];
+                
+                categoryDropdown.innerHTML = '<option value="">选择分类...</option>';
+                categories.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat;
+                    option.textContent = cat;
+                    categoryDropdown.appendChild(option);
+                });
+
+                categoryChips.innerHTML = '<button class="category-chip active" onclick="filterByCategory(\'\')">全部</button>';
+                categories.forEach(cat => {
+                    const chip = document.createElement('button');
+                    chip.className = 'category-chip';
+                    chip.textContent = cat;
+                    chip.onclick = () => filterByCategory(cat);
+                    categoryChips.appendChild(chip);
+                });
+            } catch (e) {
+                addLog(`加载分类失败: ${e}`, 'error');
+            }
+        }
+
+        fileInput.addEventListener('change', (e) => {
+            Array.from(e.target.files).forEach(f => {
+                if (f.type.startsWith('video/')) videos.push(f);
+            });
+            updateVideoList();
+        });
+
+        videoDropArea.addEventListener('dragover', (e) => { e.preventDefault(); });
+        videoDropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            videos.push(...Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('video/')));
+            updateVideoList();
+        });
+        
+        const thresholdSlider = document.getElementById('split-threshold');
+        const thresholdValue = document.getElementById('threshold-value');
+        thresholdSlider.addEventListener('input', (e) => {
+            thresholdValue.textContent = e.target.value;
+        });
+
+        function updateVideoList() {
+            videoCountSpan.textContent = videos.length;
+            if (videos.length > 0) {
+                videoListDiv.innerHTML = '';
+                videos.forEach((v, i) => {
+                    const div = document.createElement('div');
+                    div.className = 'video-item';
+                    div.dataset.index = i;
+                    div.onclick = () => selectVideo(i);
+                    div.innerHTML = `<div class="video-name">${v.name}</div><div class="video-scenes">待处理</div>`;
+                    videoListDiv.appendChild(div);
+                });
+            }
+        }
+
+        function selectVideo(index) {
+            document.querySelectorAll('.video-item').forEach((item, i) => {
+                item.classList.toggle('active', i === index);
+            });
+            currentVideoIndex = index;
+            loadVideoScenes(index);
+        }
+
+        async function loadVideoScenes(videoIndex) {
+            if (!currentTaskId) return;
+            try {
+                const response = await fetch(`${API_BASE}/api/task/${currentTaskId}`);
+                const task = await response.json();
+                const videoName = videos[videoIndex]?.name || '';
+                let videoScenes = task.scenes.filter(s => s.video_name === videoName);
+                
+                if (currentFilterCategory) {
+                    videoScenes = videoScenes.filter(s => s.category === currentFilterCategory);
+                }
+                
+                sceneCountSpan.textContent = videoScenes.length;
+
+                if (videoScenes.length > 0) {
+                    sceneListDiv.innerHTML = '';
+                    videoScenes.forEach((scene, localIndex) => {
+                        const globalIndex = task.scenes.findIndex(s => s.filename === scene.filename);
+                        const div = document.createElement('div');
+                        div.className = `scene-item${scene.selected ? ' selected' : ''}`;
+                        div.dataset.index = globalIndex;
+                        div.dataset.filename = scene.filename;
+                        div.dataset.creator = scene.creator_name;
+                        div.dataset.category = scene.category;
+                        div.onclick = () => toggleSceneSelect(globalIndex);
+                        
+                        const catClass = getCategoryClass(scene.category);
+                        div.innerHTML = `
+                            <div class="scene-info">
+                                <div class="checkbox"></div>
+                                <span class="scene-name">${scene.filename}</span>
+                                <span class="scene-duration">${scene.duration.toFixed(1)}s</span>
+                            </div>
+                            <div class="category-select-wrapper" data-index="${globalIndex}">
+                                <select class="category-select">
+                                    <option value="" disabled>选择分类...</option>
+                                </select>
+                                <span class="category-tag ${catClass} category-display">${scene.category}</span>
+                            </div>
+                        `;
+                        
+                        const select = div.querySelector('.category-select');
+                        const displaySpan = div.querySelector('.category-display');
+                        const allCats = [...categories, '其他'];
+                        allCats.forEach(cat => {
+                            const option = document.createElement('option');
+                            option.value = cat;
+                            option.textContent = cat;
+                            if (cat === scene.category) {
+                                option.selected = true;
+                            }
+                            select.appendChild(option);
+                        });
+                        
+                        select.onchange = function() {
+                            changeSceneCategory(globalIndex, this.value);
+                        };
+                        
+                        displaySpan.onclick = function(e) {
+                            e.stopPropagation();
+                            toggleCategorySelect(globalIndex);
+                        };
+                        
+                        sceneListDiv.appendChild(div);
+                    });
+                } else {
+                    sceneListDiv.innerHTML = '<div style="text-align:center;color:#999;padding:40px 20px;">该视频暂无片段</div>';
+                }
+                updateCategorySummary();
+            } catch (e) { addLog(`加载片段失败: ${e}`, 'error'); }
+        }
+
+        function getCategoryClass(category) {
+            const classMap = {
+                '产品展示': 'product', '人物特写': 'person', '场景全景': 'scene',
+                '操作演示': 'demo', '对比测评': 'review', '使用教程': 'tutorial',
+                '生活日常': 'daily', '美食制作': 'food', '运动健身': 'sport',
+                '旅行风景': 'travel', '其他': 'other', 'uncategorized': 'other'
+            };
+            return classMap[category] || 'other';
+        }
+
+        function filterByCategory(category) {
+            currentFilterCategory = category;
+            document.querySelectorAll('.category-chip').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            if (currentVideoIndex >= 0) {
+                loadVideoScenes(currentVideoIndex);
+            }
+        }
+
+        function showCategoryPanel() {
+            categorySelector.style.display = categorySelector.style.display === 'none' ? 'block' : 'none';
+        }
+
+        async function applyCategoryToSelected() {
+            const category = categoryDropdown.value;
+            if (!category || selectedScenes.size === 0) return;
+            
+            try {
+                const indices = Array.from(selectedScenes);
+                const response = await fetch(`${API_BASE}/api/task/${currentTaskId}/batch-category`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ category, scene_indices: indices })
+                });
+                const result = await response.json();
+                addLog(`成功为 ${result.updated_count} 个片段设置分类: ${category}`, 'success');
+                loadVideoScenes(currentVideoIndex);
+            } catch (e) {
+                addLog(`设置分类失败: ${e}`, 'error');
+            }
+        }
+
+        async function updateCategorySummary() {
+            if (!currentTaskId) return;
+            try {
+                const response = await fetch(`${API_BASE}/api/task/${currentTaskId}/categories-summary`);
+                const result = await response.json();
+                
+                let html = '<h4>分类统计</h4>';
+                const sortedCats = Object.entries(result.summary).sort((a, b) => b[1] - a[1]);
+                sortedCats.forEach(([cat, count]) => {
+                    html += `<div class="summary-item"><span class="name">${cat}</span><span class="count">${count}</span></div>`;
+                });
+                categorySummary.innerHTML = html;
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function clearSelection() { videos = []; selectedScenes.clear(); currentVideoIndex = -1; updateVideoList(); updateSelectedCount(); }
+        function selectVideoFolder() { addLog('请手动选择视频文件夹'); }
+
+        async function startProcessing() {
+            if (videos.length === 0) { alert('请先选择视频文件'); return; }
+            startBtn.disabled = true;
+            startBtn.innerHTML = '⏳ 处理中...';
+            addLog('开始上传视频...');
+            try {
+                const formData = new FormData();
+                videos.forEach(v => formData.append('files', v));
+                const res = await fetch(`${API_BASE}/api/upload`, { method: 'POST', body: formData });
+                const result = await res.json();
+                currentTaskId = result.task_id;
+                addLog(`任务创建成功: ${result.task_name}`, 'success');
+                addLog('开始场景分割...');
+                const skipAI = document.getElementById('skip-ai')?.checked || false;
+                const threshold = document.getElementById('split-threshold')?.value || 27;
+                const framePrecision = document.getElementById('frame-precision')?.checked || true;
+                const fastMode = document.getElementById('fast-mode')?.checked || false;
+                
+                let url = `${API_BASE}/api/process/${currentTaskId}?skip_ai=${skipAI}&threshold=${threshold}&frame_precision=${framePrecision}&fast_mode=${fastMode}`;
+                
+                if (categories.length > 0 && !skipAI) {
+                    categories.forEach(cat => {
+                        url += `&categories=${encodeURIComponent(cat)}`;
+                    });
+                    addLog(`使用自定义分类: ${categories.join(', ')}`, 'info');
+                }
+                
+                addLog(`拆分阈值: ${threshold}，帧精确模式: ${framePrecision ? '开启' : '关闭'}`, 'info');
+                const processRes = await fetch(url, { method: 'POST' });
+                const processResult = await processRes.json();
+                addLog(`处理完成！共生成 ${processResult.scene_count} 个片段`, 'success');
+                updateVideoListWithSceneCount();
+                if (videos.length > 0) selectVideo(0);
+            } catch (e) { addLog(`处理失败: ${e}`, 'error'); } finally { startBtn.disabled = false; startBtn.innerHTML = '▶ 开始生成审核片段'; }
+        }
+
+        async function updateVideoListWithSceneCount() {
+            if (!currentTaskId) return;
+            try {
+                const res = await fetch(`${API_BASE}/api/task/${currentTaskId}`);
+                const task = await res.json();
+                document.querySelectorAll('.video-item').forEach((item, i) => {
+                    const vname = videos[i]?.name || '';
+                    const scenes = task.scenes.filter(s => s.video_name === vname);
+                    item.querySelector('.video-scenes').textContent = `${scenes.length} 个片段`;
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        function toggleSceneSelect(index) {
+            const item = document.querySelector(`.scene-item[data-index="${index}"]`);
+            if (item) {
+                item.classList.toggle('selected');
+                if (item.classList.contains('selected')) selectedScenes.add(index);
+                else selectedScenes.delete(index);
+                updateSelectedCount();
+                previewScene(index);
+            }
+        }
+
+        function updateSelectedCount() {
+            selectedCountDiv.innerHTML = `已选择: ${selectedScenes.size} 个`;
+            if (selectedScenes.size === 0) {
+                selectedScenesDiv.innerHTML = `<div id="selected-count">已选择: 0 个</div><div class="empty">暂无选择</div>`;
+            } else {
+                let html = `<div id="selected-count">已选择: ${selectedScenes.size} 个</div>`;
+                Array.from(selectedScenes).sort((a,b) => a-b).forEach(i => {
+                    const item = document.querySelector(`.scene-item[data-index="${i}"]`);
+                    if (item) {
+                        const catClass = getCategoryClass(item.dataset.category);
+                        html += `<div class="scene-item selected" style="margin-bottom:8px;">
+                            <div class="scene-info">
+                                <div class="checkbox" style="background:#667eea;border-color:#667eea;">
+                                    <span style="color:white;font-size:12px;">✓</span>
+                                </div>
+                                <span class="scene-name">${item.dataset.filename}</span>
+                            </div>
+                            <span class="category-tag ${catClass}">${item.dataset.category}</span>
+                        </div>`;
+                    }
+                });
+                selectedScenesDiv.innerHTML = html;
+            }
+        }
+
+        function previewScene(index) {
+            const item = document.querySelector(`.scene-item[data-index="${index}"]`);
+            if (!item) return;
+            const url = `${API_BASE}/data/输出分类/${encodeURIComponent(item.dataset.creator)}/${encodeURIComponent(item.dataset.filename)}`;
+            previewArea.innerHTML = `<video controls autoplay style="max-width:100%;max-height:100%;object-fit:contain;"><source src="${url}" type="video/mp4"></video>`;
+        }
+
+        function selectAllScenes(selected) {
+            document.querySelectorAll('.scene-item').forEach((item, i) => {
+                if (selected) { item.classList.add('selected'); selectedScenes.add(i); }
+                else { item.classList.remove('selected'); selectedScenes.delete(i); }
+            });
+            updateSelectedCount();
+        }
+
+        async function exportSelected() {
+            if (selectedScenes.size === 0) { alert('请先选择片段'); return; }
+            try {
+                addLog(`导出 ${selectedScenes.size} 个选中片段...`);
+                const res = await fetch(`${API_BASE}/api/task/${currentTaskId}/export?selected_only=true`, { method: 'POST' });
+                const result = await res.json();
+                addLog(`导出成功！目录: ${result.export_dir}`, 'success');
+                alert(`成功导出 ${result.exported_count} 个片段到:\n${result.export_dir}`);
+            } catch (e) { addLog(`导出失败: ${e}`, 'error'); }
+        }
+
+        async function exportAll() {
+            try {
+                addLog('导出全部片段...');
+                const res = await fetch(`${API_BASE}/api/task/${currentTaskId}/export?selected_only=false`, { method: 'POST' });
+                const result = await res.json();
+                addLog(`导出成功！目录: ${result.export_dir}`, 'success');
+                alert(`成功导出 ${result.exported_count} 个片段到:\n${result.export_dir}`);
+            } catch (e) { addLog(`导出失败: ${e}`, 'error'); }
+        }
+
+        async function exportByCategoryBtn() {
+            const cat = prompt('请输入要导出的分类（留空导出全部）：');
+            try {
+                addLog(`按分类导出: ${cat || '全部'}...`);
+                const res = await fetch(`${API_BASE}/api/task/${currentTaskId}/export-by-category${cat ? '?category=' + encodeURIComponent(cat) : ''}`, { method: 'POST' });
+                const result = await res.json();
+                addLog(`导出成功！目录: ${result.export_dir}`, 'success');
+                alert(`成功导出 ${result.exported_count} 个片段到:\n${result.export_dir}`);
+            } catch (e) { addLog(`导出失败: ${e}`, 'error'); }
+        }
+
+        function toggleCategorySelect(sceneIndex) {
+            const wrapper = document.querySelector(`.category-select-wrapper[data-index="${sceneIndex}"]`) || 
+                          document.querySelector(`.scene-item[data-index="${sceneIndex}"] .category-select-wrapper`);
+            if (wrapper) {
+                wrapper.classList.toggle('active');
+                
+                document.addEventListener('click', function closeOthers(e) {
+                    if (!wrapper.contains(e.target)) {
+                        wrapper.classList.remove('active');
+                        document.removeEventListener('click', closeOthers);
+                    }
+                });
+            }
+        }
+
+        async function updateSceneCategory(sceneIndex, newCategory) {
+            if (!currentTaskId) return false;
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/task/${currentTaskId}/scene/${sceneIndex}/category?category=${encodeURIComponent(newCategory)}`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                return result.success;
+            } catch (e) {
+                console.error('更新分类失败:', e);
+                return false;
+            }
+        }
+
+        async function changeSceneCategory(sceneIndex, newCategory) {
+            if (!currentTaskId || !newCategory) return;
+            
+            try {
+                await updateSceneCategory(sceneIndex, newCategory);
+                
+                addLog(`正在将片段添加到训练集: ${newCategory}...`);
+                let url = `${API_BASE}/api/training-set/add?task_id=${currentTaskId}&scene_index=${sceneIndex}&correct_category=${encodeURIComponent(newCategory)}`;
+                if (currentProduct) {
+                    url += `&product=${encodeURIComponent(currentProduct)}`;
+                }
+                const res = await fetch(url, { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    addLog(result.message, 'success');
+                }
+            } catch (e) {
+                addLog(`添加训练样本失败: ${e}`, 'error');
+            }
+            
+            loadSceneList(currentVideoIndex);
+        }
+
+        async function showTrainingSet() {
+            try {
+                const url = currentProduct ? `${API_BASE}/api/training-set?product=${encodeURIComponent(currentProduct)}` : `${API_BASE}/api/training-set`;
+                const res = await fetch(url);
+                const result = await res.json();
+                if (result.success) {
+                    let html = `<h3>训练集 (${result.current_product || '全局'} - 共 ${result.total_samples} 个样本)</h3>`;
+                    const cats = Object.entries(result.categories);
+                    if (cats.length === 0) {
+                        html += '<p style="color:#999;">训练集为空</p>';
+                    } else {
+                        cats.forEach(([cat, files]) => {
+                            html += `<div style="margin-bottom:15px;">
+                                <h4>${cat} (${files.length} 个)</h4>
+                                <div style="display:flex;flex-wrap:wrap;gap:8px;">`;
+                            files.slice(0, 10).forEach(f => {
+                                html += `<span style="padding:4px 10px;background:#f0f0f0;border-radius:4px;font-size:12px;">${f}</span>`;
+                            });
+                            if (files.length > 10) {
+                                html += `<span style="padding:4px 10px;background:#f0f0f0;border-radius:4px;font-size:12px;color:#999;">+${files.length - 10} 更多</span>`;
+                            }
+                            html += `</div></div>`;
+                        });
+                    }
+                    html += '<button onclick="clearTrainingSet()" style="margin-top:10px;padding:8px 16px;background:#ff4444;color:white;border:none;border-radius:4px;cursor:pointer;">清空训练集</button>';
+                    alert(html);
+                }
+            } catch (e) {
+                addLog(`获取训练集失败: ${e}`, 'error');
+            }
+        }
+
+        async function clearTrainingSet() {
+            if (!confirm('确定要清空训练集吗？此操作不可恢复！')) return;
+            try {
+                const url = currentProduct ? `${API_BASE}/api/training-set/clear?product=${encodeURIComponent(currentProduct)}` : `${API_BASE}/api/training-set/clear`;
+                const res = await fetch(url, { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    addLog(result.message, 'success');
+                } else {
+                    addLog(`清空失败: ${result.error}`, 'error');
+                }
+            } catch (e) {
+                addLog(`清空训练集失败: ${e}`, 'error');
+            }
+        }
+
+        function selectFromProductHistory(productName) {
+            if (!productName) return;
+            
+            document.getElementById('product-input').value = productName;
+            setProduct();
+            document.getElementById('product-select').value = '';
+        }
+
+        async function setProduct() {
+            const productInput = document.getElementById('product-input');
+            const productName = productInput.value.trim();
+            if (!productName) {
+                alert('请输入产品名称');
+                return;
+            }
+            
+            try {
+                const res = await fetch(`${API_BASE}/api/set-product?product_name=${encodeURIComponent(productName)}`, { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    currentProduct = productName;
+                    document.getElementById('current-product').textContent = `当前产品: ${productName}`;
+                    addLog(`已切换到产品: ${productName}`, 'success');
+                    
+                    saveProductToHistory(productName);
+                    loadProductHistory();
+                }
+            } catch (e) {
+                addLog(`设置产品失败: ${e}`, 'error');
+            }
+        }
+
+        function saveProductToHistory(productName) {
+            let history = JSON.parse(localStorage.getItem('product_history') || '[]');
+            history = history.filter(p => p !== productName);
+            history.unshift(productName);
+            history = history.slice(0, 20);
+            localStorage.setItem('product_history', JSON.stringify(history));
+        }
+
+        function loadProductHistory() {
+            const select = document.getElementById('product-select');
+            const history = JSON.parse(localStorage.getItem('product_history') || '[]');
+            
+            select.innerHTML = '<option value="">选择历史产品...</option>';
+            history.forEach(product => {
+                const option = document.createElement('option');
+                option.value = product;
+                option.textContent = product;
+                select.appendChild(option);
+            });
+        }
+
+        async function clearProduct() {
+            try {
+                const res = await fetch(`${API_BASE}/api/clear-product`, { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    currentProduct = null;
+                    document.getElementById('product-input').value = '';
+                    document.getElementById('current-product').textContent = '';
+                    addLog('已清除当前产品，使用全局训练集', 'info');
+                }
+            } catch (e) {
+                addLog(`清除产品失败: ${e}`, 'error');
+            }
+        }
+
+        async function loadCategorySets() {
+            try {
+                const res = await fetch(`${API_BASE}/api/category-sets`);
+                const result = await res.json();
+                if (result.success) {
+                    const select = document.getElementById('category-set-select');
+                    select.innerHTML = '<option value="">选择品类集合...</option>';
+                    Object.keys(result.sets).forEach(name => {
+                        const option = document.createElement('option');
+                        option.value = name;
+                        option.textContent = name;
+                        select.appendChild(option);
+                    });
+                    if (result.current_set) {
+                        select.value = result.current_set;
+                        currentCategorySet = result.current_set;
+                        document.getElementById('current-category-set').textContent = `当前品类: ${result.current_set}`;
+                    }
+                }
+            } catch (e) {
+                console.error('加载品类集合失败:', e);
+            }
+        }
+
+        function autoGenerateSetName() {
+            const productInput = document.getElementById('product-input');
+            const setNameInput = document.getElementById('category-set-name');
+            const currentProduct = document.getElementById('current-product').textContent.replace('当前产品: ', '');
+            
+            let baseName = productInput.value.trim() || currentProduct || '未命名产品';
+            setNameInput.value = `${baseName}_分类集合`;
+        }
+
+        async function saveCategorySet() {
+            const setNameInput = document.getElementById('category-set-name');
+            const setName = setNameInput.value.trim();
+            
+            if (!setName) {
+                alert('请先输入分类集合名称');
+                return;
+            }
+            
+            if (categories.length === 0) {
+                alert('请先设置分类');
+                return;
+            }
+            
+            try {
+                let url = `${API_BASE}/api/category-sets/save?set_name=${encodeURIComponent(setName)}`;
+                categories.forEach(cat => {
+                    url += `&categories=${encodeURIComponent(cat)}`;
+                });
+                const res = await fetch(url, { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    addLog(result.message, 'success');
+                    loadCategorySets();
+                } else {
+                    addLog(`保存失败: ${result.error}`, 'error');
+                }
+            } catch (e) {
+                addLog(`保存品类集合失败: ${e}`, 'error');
+            }
+        }
+
+        async function loadCategorySet(setName) {
+            if (!setName) {
+                currentCategorySet = null;
+                document.getElementById('current-category-set').textContent = '';
+                return;
+            }
+            
+            try {
+                const res = await fetch(`${API_BASE}/api/category-sets/load?set_name=${encodeURIComponent(setName)}`, { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    categories = result.categories;
+                    currentCategorySet = setName;
+                    document.getElementById('current-category-set').textContent = `当前品类: ${setName}`;
+                    updateCategoryChips();
+                    addLog(result.message, 'success');
+                } else {
+                    addLog(`加载失败: ${result.error}`, 'error');
+                }
+            } catch (e) {
+                addLog(`加载品类集合失败: ${e}`, 'error');
+            }
+        }
+
+        async function renameCategorySet() {
+            const select = document.getElementById('category-set-select');
+            const oldName = select.value;
+            if (!oldName) {
+                alert('请先选择一个品类集合');
+                return;
+            }
+            
+            const newName = prompt('请输入新名称：', oldName);
+            if (!newName || newName === oldName) return;
+            
+            try {
+                const res = await fetch(`${API_BASE}/api/category-sets/rename?old_name=${encodeURIComponent(oldName)}&new_name=${encodeURIComponent(newName)}`, { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    addLog(result.message, 'success');
+                    loadCategorySets();
+                } else {
+                    addLog(`重命名失败: ${result.error}`, 'error');
+                }
+            } catch (e) {
+                addLog(`重命名品类集合失败: ${e}`, 'error');
+            }
+        }
+
+        async function deleteCategorySet() {
+            const select = document.getElementById('category-set-select');
+            const setName = select.value;
+            if (!setName) {
+                alert('请先选择一个品类集合');
+                return;
+            }
+            
+            if (!confirm(`确定要删除品类集合 "${setName}" 吗？`)) return;
+            
+            try {
+                const res = await fetch(`${API_BASE}/api/category-sets/delete?set_name=${encodeURIComponent(setName)}`, { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    addLog(result.message, 'success');
+                    select.value = '';
+                    currentCategorySet = null;
+                    document.getElementById('current-category-set').textContent = '';
+                    loadCategorySets();
+                } else {
+                    addLog(`删除失败: ${result.error}`, 'error');
+                }
+            } catch (e) {
+                addLog(`删除品类集合失败: ${e}`, 'error');
+            }
+        }
+
+        async function recognizeCategoriesFromImage() {
+            const input = document.getElementById('category-image-input');
+            if (!input.files || input.files.length === 0) return;
+            
+            const file = input.files[0];
+            const formData = new FormData();
+            formData.append('image', file);
+            
+            addLog('正在识别截图中的分类目录...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/recognize-categories`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    const newCategories = result.categories.filter(c => c.trim());
+                    if (newCategories.length > 0) {
+                        addLog(`识别到 ${newCategories.length} 个分类: ${newCategories.join(', ')}`, 'success');
+                        
+                        const confirmResult = confirm(`识别到以下分类:\n${newCategories.join('\n')}\n\n是否使用这些分类替换当前分类？`);
+                        if (confirmResult) {
+                            await fetch(`${API_BASE}/api/set-categories`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(newCategories)
+                            });
+                            categories = newCategories;
+                            updateCategoryUI();
+                            addLog('分类已更新', 'success');
+                        }
+                    } else {
+                        addLog('未识别到任何分类', 'warning');
+                    }
+                } else {
+                    addLog(`识别失败: ${result.error}`, 'error');
+                }
+            } catch (e) {
+                addLog(`识别失败: ${e}`, 'error');
+            }
+        }
+
+        function updateCategoryUI() {
+            categoryDropdown.innerHTML = '<option value="">选择分类...</option>';
+            categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat;
+                option.textContent = cat;
+                categoryDropdown.appendChild(option);
+            });
+
+            categoryChips.innerHTML = '<button class="category-chip active" onclick="filterByCategory(\'\')">全部</button>';
+            categories.forEach(cat => {
+                const chip = document.createElement('button');
+                chip.className = 'category-chip';
+                chip.textContent = cat;
+                chip.onclick = () => filterByCategory(cat);
+                categoryChips.appendChild(chip);
+            });
+        }
+
+        async function setCategoriesFromText() {
+            const textarea = document.getElementById('category-input');
+            const text = textarea.value.trim();
+            if (!text) {
+                alert('请输入分类内容');
+                return;
+            }
+            
+            const lines = text.split('\n');
+            const newCategories = [];
+            lines.forEach(line => {
+                line.split(',').forEach(item => {
+                    const trimmed = item.trim();
+                    if (trimmed && !newCategories.includes(trimmed)) {
+                        newCategories.push(trimmed);
+                    }
+                });
+            });
+            
+            if (newCategories.length === 0) {
+                alert('请输入有效的分类');
+                return;
+            }
+            
+            try {
+                await fetch(`${API_BASE}/api/set-categories`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newCategories)
+                });
+                categories = newCategories;
+                updateCategoryUI();
+                addLog(`分类已更新: ${newCategories.join(', ')}`, 'success');
+            } catch (e) {
+                addLog(`设置分类失败: ${e}`, 'error');
+            }
+        }
+
+        async function reSplitSelected() {
+            if (selectedScenes.size !== 1) {
+                alert('请选择一个片段进行二次拆分');
+                return;
+            }
+            
+            const index = Array.from(selectedScenes)[0];
+            const threshold = prompt('请输入二次拆分阈值（建议10-25，值越低拆分越细）:', '20');
+            if (threshold === null) return;
+            
+            const thresholdValue = parseFloat(threshold);
+            if (isNaN(thresholdValue)) {
+                alert('请输入有效的数值');
+                return;
+            }
+            
+            addLog(`开始二次拆分片段 ${index + 1}，阈值: ${thresholdValue}...`);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/task/${currentTaskId}/re-split/${index}?threshold=${thresholdValue}`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    addLog(`二次拆分成功！拆分为 ${result.new_scenes_count} 个子片段`, 'success');
+                    loadVideoScenes(currentVideoIndex);
+                } else {
+                    addLog(`二次拆分失败: ${result.message}`, 'error');
+                }
+            } catch (e) {
+                addLog(`二次拆分失败: ${e}`, 'error');
+            }
+        }
+
+        loadCategories();
+        loadCategorySets();
+        loadProductHistory();
+        addLog('智能镜头分割工具已就绪', 'success');
+        addLog('请选择视频文件开始处理');
+    </script>
+</body>
+</html>
